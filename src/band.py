@@ -5,6 +5,7 @@ from ping3 import ping
 from tqdm import tqdm
 from datetime import datetime
 import os
+from pathlib import Path  # Import Path
 from database.db_config import DatabaseManager
 
 class ConfigChecker:
@@ -50,7 +51,6 @@ class ConfigChecker:
         else:
             return ConfigChecker.parse_vmess(url)
 
-
     @staticmethod
     def check_connectivity(config):
         try:
@@ -69,13 +69,18 @@ class ConfigChecker:
 class ConfigFilter:
     def __init__(self):
         self.timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-        self.input_file = f'data/current/sub7_{self.timestamp}.txt'
+        self.input_file = self.get_latest_file('data/current')  # Find the latest file
         self.output_file = f'data/current/worked_sub7_{self.timestamp}.txt'
         self.archive_dir = 'data/archive'
         self.db_manager = DatabaseManager()
 
+    def get_latest_file(self, directory):
+        # List all files in specified directory
+        files = list(Path(directory).glob('*'))
+        # Return the most recently modified file
+        return max(files, key=os.path.getctime).as_posix()
+
     def archive_old_files(self):
-        # Move previous files to archive
         if os.path.exists(self.input_file):
             archive_name = f'sub7_{self.timestamp}_archive.txt'
             archive_path = os.path.join(self.archive_dir, archive_name)
@@ -99,15 +104,12 @@ class ConfigFilter:
                     'latency': latency
                 })
 
-        # Sort servers by latency
         working_servers.sort(key=lambda x: x['latency'])
 
-        # Write working servers to output file
         with open(self.output_file, 'w') as outfile:
             for server in working_servers:
                 outfile.write(f"{server['config']}\n")
 
-        # Save to database
         self.db_manager.save_server_data(
             f'worked_sub7_{self.timestamp}',
             '\n'.join([s['config'] for s in working_servers])

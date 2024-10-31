@@ -24,8 +24,8 @@ jobs:
         
     - name: Run server refresh and validation
       run: |
-        python src/get_servers.py
-        python src/band.py
+        python -m src.get_servers
+        python -m src.band
         
     - name: Archive database
       run: |
