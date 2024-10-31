@@ -1,1 +1,42 @@
+name: Refresh Servers
 
+on:
+  schedule:
+    - cron: '30 00 * * *'  # '0 3 * * *' Runs at midnight UTC
+  workflow_dispatch:
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v2
+    
+    - name: Set up Python
+      uses: actions/setup-python@v2
+      with:
+        python-version: '3.x'
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        
+    - name: Run server refresh and validation
+      run: |
+        python src/get_servers.py
+        python src/band.py
+        
+    - name: Archive database
+      run: |
+        timestamp=$(date +%Y%m%d_%H%M%S)
+        cp servers.db data/archive/servers_${timestamp}.db
+        
+    - name: Commit and push changes
+      run: |
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+        git add data/current/*
+        git add data/archive/*
+        git commit -m "Update server lists $(date)"
+        git push
